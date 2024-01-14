@@ -13,6 +13,10 @@ csrf = CSRFProtect(app)
 
 db.init_app(app)
 
+@app.cli.command('init-db')
+def db_init():
+    db.create_all()
+
 @app.route('/')
 def index():
     return render_template('base.html')
