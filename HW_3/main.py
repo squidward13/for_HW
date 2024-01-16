@@ -24,7 +24,7 @@ def index():
 @app.route('/register/', methods=['GET', 'POST'])
 def register():
     form = RegistrationForm()
-    if request.method == 'POST' and form.validate():
+    if form.validate_on_submit()
         db.session.add(User(name=form.name.data,
                             email=form.email.data, 
                             password=sha256(form.password.data.encode(encoding='utf-8')).hexdigest()))
