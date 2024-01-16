@@ -13,23 +13,17 @@
 <form method="POST" action="{{ url_for('register') }}">
 {{ form.csrf_token }}
 <p>
-{{ form.name.label }}<br>
-{{ form.name(size=32) }}
-</p>
-<p>
-{{ form.email.label }}<br>
-{{ form.email(size=32) }}
-</p>
-<p>
-{{ form.password.label }}<br>
-{{ form.password(size=32) }}
-</p>
-<p>
-{{ form.confirm_password.label }}<br>
-{{ form.confirm_password(size=32) }}
-</p>
-<p>
-{{ form.submit() }}
-</p>
+    {% for field in form if ield.name not in ["csrf_token", "submit"] %}
+    <p>{{ field.label }}<br>
+    {{ field(size=32) }}
+            {% for error in field.errors %}
+                <span style="color: red;">{{ error }}</span><br>
+            {% endfor %}
+    </p>
+    {% endif %}
+    {% endfor %}
+    <p>
+    {{ form.submit() }}
+    </p>
 </form>
 {% endblock %}
