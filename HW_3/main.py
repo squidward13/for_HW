@@ -29,7 +29,12 @@ def register():
                             email=form.email.data, 
                             password=sha256(form.password.data.encode(encoding='utf-8')).hexdigest()))
         db.session.commit()
-        return redirect(url_for('register'))
+        flash('Вы успешно зарегистрированы!')
+        return redirect(url_for('index'))
+    else:
+        for field in form:
+            for error in field.errors:
+                flash(error)
     return render_template('register.html', form=form)
 
 if __name__ == '__main__':
