@@ -1,141 +1,241 @@
-# Написать программу, которая скачивает изображения с заданных URL-адресов и сохраняет их на диск.
-# Каждое изображение должно сохраняться в отдельном файле, название которого соответствует названию изображения в URL-адресе.
-# Например, URL-адрес: https://example/images/image1.jpg -> файл на диске: image1.jpg
-# — Программа должна использовать многопоточный, многопроцессорный и асинхронный подходы.
-# — Программа должна иметь возможность задавать список URL-адресов через аргументы командной строки.
-# — Программа должна выводить в консоль информацию о времени скачивания каждого изображения и общем времени выполнения программы.
+# Необходимо создать базу данных для интернет-магазина. База данных должна состоять из трёх таблиц: товары, заказы и пользователи.
+# — Таблица «Товары» должна содержать информацию о доступных товарах, их описаниях и ценах.
+# — Таблица «Заказы» должна содержать информацию о заказах, сделанных пользователями.
+# — Таблица «Пользователи» должна содержать информацию о зарегистрированных пользователях магазина.
+# • Таблица пользователей должна содержать следующие поля: id (PRIMARY KEY), имя, фамилия, адрес электронной почты и пароль.
+# • Таблица заказов должна содержать следующие поля: id (PRIMARY KEY), id пользователя (FOREIGN KEY), id товара (FOREIGN KEY), дата заказа и статус заказа.
+# • Таблица товаров должна содержать следующие поля: id (PRIMARY KEY), название, описание и цена.
+
+# Создайте модели pydantic для получения новых данных и возврата существующих в БД для каждой из трёх таблиц (итого шесть моделей).
+# Реализуйте CRUD операции для каждой из таблиц через создание маршрутов, REST API (итого 15 маршрутов).
+# * Чтение всех
+# * Чтение одного
+# * Запись
+# * Изменение
+# * Удаление
+
+# Данная промежуточная аттестация оценивается по системе "зачет" / "не зачет"
+
+# "Зачет" ставится, если Слушатель успешно выполнил задание.
+# "Незачет" ставится, если Слушатель не выполнил задание.
+
+# Критерии оценивания:
+# 1 - Слушатель создал базу данных для интернет-магазина. База данных должна состоять из трёх таблиц: товары, заказы и пользователи.
+# — Таблица «Товары» должна содержать информацию о доступных товарах, их описаниях и ценах.
+# — Таблица «Заказы» должна содержать информацию о заказах, сделанных пользователями.
+# — Таблица «Пользователи» должна содержать информацию о зарегистрированных пользователях магазина.
 
 
-import time
-import requests
-import threading
-from multiprocessing import Process
-from urllib.parse import urlparse
-import os
-from sys import argv
-import asyncio
-import aiohttp
-import httpx
+from typing import List
+from fastapi import FastAPI
+from pydantic import BaseModel, Field
+import databases
+import sqlalchemy
+import datetime
 
 
-def get_image(url):
-    start = time.perf_counter()
-    img_data = requests.get(url).content
-    filename = os.path.basename(urlparse(url).path)
-    with open(filename, 'wb') as f:
-        f.write(img_data)
-        print(f'Время выполнения: {time.perf_counter() - start}.')
+DATABASE_URL = 'sqlite:///mydatabase.db'
+
+database = databases.Database(DATABASE_URL)
+metadata = sqlalchemy.MetaData()
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[SQLAlchemy Tables]~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+users = sqlalchemy.Table(
+    'users',
+    metadata,
+    sqlalchemy.Column('id', sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column('first_name', sqlalchemy.String(15)),
+    sqlalchemy.Column('last_name', sqlalchemy.String(20)),
+    sqlalchemy.Column('email', sqlalchemy.String(50), unique=True),
+    sqlalchemy.Column('password', sqlalchemy.String(20))
+)
 
 
-async def download_files(url: str):
-    start = time.perf_counter()
-    filename = os.path.basename(urlparse(url).path)
-    with open(filename, 'wb') as f:
-        async with httpx.AsyncClient() as client:
-            async with client.stream('GET', url) as r:
-                r.raise_for_status()
-                async for img in r.aiter_bytes():
-                    f.write(img)
-                print(f'Время выполнения: {time.perf_counter() - start}.')
+products = sqlalchemy.Table(
+    'products',
+    metadata,
+    sqlalchemy.Column('id', sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column('name', sqlalchemy.String(50)),
+    sqlalchemy.Column('description', sqlalchemy.String(1000)),
+    sqlalchemy.Column('cost', sqlalchemy.Float),
+)
 
 
-async def main(urls):
-    loop = asyncio.get_running_loop()
-    tasks = [loop.create_task(download_files(url)) for url in urls]
-    await asyncio.gather(*tasks, return_exceptions=True)
+orders = sqlalchemy.Table(
+    'orders',
+    metadata,
+    sqlalchemy.Column('id', sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column('user_id', sqlalchemy.Integer, sqlalchemy.ForeignKey('users.id')),
+    sqlalchemy.Column('product_id', sqlalchemy.Integer, sqlalchemy.ForeignKey('products.id')),
+    sqlalchemy.Column('order_date', sqlalchemy.Date),
+    sqlalchemy.Column('order_status', sqlalchemy.String(20))
+)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-if __name__ == '__main__':
-    urls = ['https://i.imgur.com/ycPp6on.jpeg',
-    'https://i.imgur.com/UkgrtOf.jpeg',
-    'https://i.imgur.com/S7tCJwu.png',
-    'https://i.imgur.com/kaDG46g.jpeg',
-    'https://i.imgur.com/XOyxsrX.jpeg',
-    'https://i.imgur.com/HNxiNiZ.jpeg',
-    'https://i.imgur.com/vdVviPZ.jpeg',
-    'https://i.imgur.com/ml0X70b.jpeg',
-    'https://i.imgur.com/8cQGxFf.jpeg',
-    'https://i.imgur.com/B4W0pDk.jpeg',
-    'https://i.imgur.com/Gp2gKOC.jpeg']
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[Pydantic Models]~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+class UserIn(BaseModel):
+    first_name: str = Field(..., max_length=15)
+    last_name: str = Field(..., max_length=20)
+    email: str = Field(..., max_length=50)
+    password: str = Field(..., max_length=20)
 
-    if len(argv) > 1:
-        urls = []
-        for i in range(1, len(argv)):
-            urls.append(argv[i])
 
-    # Синхронный подход
+class User(BaseModel):
+    id: int
+    first_name: str = Field(..., max_length=15)
+    last_name: str = Field(..., max_length=20)
+    email: str = Field(..., max_length=50)
+    password: str = Field(..., max_length=20)
 
-    print('\nСтарт синхронного подхода.')
 
-    start = time.perf_counter()
+class OrderIn(BaseModel):
+    user_id: int
+    product_id: int
+    order_date: datetime.date
+    order_status: str = Field(..., max_length=20)
 
-    for url in urls:
-        get_image(url)
 
-    sync = time.perf_counter() - start
+class Order(BaseModel):
+    id: int
+    user_id: int
+    product_id: int
+    order_date: datetime.date
+    order_status: str = Field(..., max_length=20)
 
-    print(f'Синхронный подход: {sync}.')
 
-    # Многопоточный подход
+class ProductIn(BaseModel):
+    name: str = Field(..., max_length=50)
+    description: str = Field(..., max_length=1000)
+    cost: float = Field(..., ge=1, le=1_000_000)
 
-    print('\nСтарт многопоточного подхода.')
 
-    start = time.perf_counter()
+class Product(BaseModel):
+    id: int
+    name: str = Field(..., max_length=50)
+    description: str = Field(..., max_length=1000)
+    cost: float = Field(..., ge=1, le=1_000_000)
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    threads = []
 
-    for url in urls:
-        thread = threading.Thread(target=get_image, args=[url])
-        threads.append(thread)
+engine = sqlalchemy.create_engine(DATABASE_URL)
+metadata.create_all(engine)
 
-    for thread in threads:
-        thread.start()
+app = FastAPI()
 
-    for thread in threads:
-        thread.join()
 
-    thread = time.perf_counter() - start
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[Events]~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+@app.on_event('startup')
+async def startup():
+    await database.connect()
 
-    print(f'Многопоточный подход: {thread}.')
 
-    # Многопроцессорный подход
+@app.on_event('shutdown')
+async def shutdown():
+    await database.disconnect()
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    print('\nСтарт многопроцессорного подхода.')
 
-    start = time.perf_counter()
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[CRUD Users]~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+@app.post('/users/', response_model=User)
+async def create_user(user: UserIn):
+    query = users.insert().values(first_name=user.first_name, last_name=user.last_name, email=user.email, password=user.password)
+    last_record_id = await database.execute(query)
+    return {**user.dict(), 'id': last_record_id}
 
-    processes = []
 
-    for url in urls:
-        process = Process(target=get_image, args=[url])
-        processes.append(process)
+@app.get('/users/', response_model=List[User])
+async def read_users():
+    query = users.select()
+    return await database.fetch_all(query)
 
-    for process in processes:
-        process.start()
 
-    for process in processes:
-        process.join()
+@app.get('/users/{user_id}', response_model=User)
+async def read_user(user_id: int):
+    query = users.select().where(users.c.id == user_id)
+    return await database.fetch_one(query)
 
-    process = time.perf_counter() - start
 
-    print(f'Многопроцессорный подход: {process}.')
+@app.put('/users/{user_id}', response_model=User)
+async def update_user(user_id: int, new_user: UserIn):
+    query = users.update().where(users.c.id == user_id).values(**new_user.dict())
+    await database.execute(query)
+    return {**new_user.dict(), 'id': user_id}
 
-    # Асинхронный подход
 
-    print('\nСтарт асинхронного подхода.')
+@app.delete('/users/{user_id}')
+async def delete_user(user_id: int):
+    query = users.delete().where(users.c.id == user_id)
+    await database.execute(query)
+    return {'message': f'User {user_id} deleted'}
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    start = time.perf_counter()
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main(urls))
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[CRUD Orders]~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+@app.post('/orders/', response_model=Order)
+async def create_order(order: OrderIn):
+    query = orders.insert().values(user_id=order.user_id, product_id=order.product_id, order_date=order.order_date, order_status=order.order_status)
+    last_record_id = await database.execute(query)
+    return {**order.dict(), 'id': last_record_id}
 
-    async_ = time.perf_counter() - start
 
-    print(f'Асинхронный подход: {async_}.')
+@app.get('/orders/', response_model=List[Order])
+async def read_orders():
+    query = orders.select()
+    return await database.fetch_all(query)
 
-    # Общие результаты
 
-    print(f'\nСинхронный подход: {sync}.\n'
-          f'Многопоточный подход: {thread}.\n'
-          f'Многопроцессорный подход: {process}.\n'
-          f'Асинхронный подход: {async_}.\n')
+@app.get('/orders/{order_id}', response_model=Order)
+async def read_order(order_id: int):
+    query = orders.select().where(orders.c.id == order_id)
+    return await database.fetch_one(query)
+
+
+@app.put('/orders/{order_id}', response_model=Order)
+async def update_order(order_id: int, new_order: OrderIn):
+    query = orders.update().where(orders.c.id == order_id).values(**new_order.dict())
+    await database.execute(query)
+    return {**new_order.dict(), 'id': order_id}
+
+
+@app.delete('/orders/{order_id}')
+async def delete_order(order_id: int):
+    query = orders.delete().where(orders.c.id == order_id)
+    await database.execute(query)
+    return {'message': f'Order {order_id} deleted'}
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[CRUD Products]~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+@app.post('/products/', response_model=Product)
+async def create_product(product: ProductIn):
+    query = products.insert().values(name=product.name, description=product.description, cost=product.cost)
+    last_record_id = await database.execute(query)
+    return {**product.dict(), 'id': last_record_id}
+
+
+@app.get('/products/', response_model=List[Product])
+async def read_products():
+    query = products.select()
+    return await database.fetch_all(query)
+
+    
+@app.get('/products/{product_id}', response_model=Product)
+async def read_product(product_id: int):
+    query = products.select().where(products.c.id == product_id)
+    return await database.fetch_one(query)
+
+
+@app.put('/products/{product_id}', response_model=Product)
+async def update_product(product_id: int, new_product: ProductIn):
+    query = products.update().where(products.c.id == product_id).values(**new_product.dict())
+    await database.execute(query)
+    return {**new_product.dict(), 'id': product_id}
+
+
+@app.delete('/products/{product_id}')
+async def delete_product(product_id: int):
+    query = products.delete().where(products.c.id == product_id)
+    await database.execute(query)
+    return {'message': f'Product {product_id} deleted'}
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
